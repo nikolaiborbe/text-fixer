@@ -1,0 +1,2 @@
+hard_tabs  = false   # ← use spaces, not \t
+tab_spaces = 2
