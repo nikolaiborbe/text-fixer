@@ -8,11 +8,14 @@
     "frontendDist": "../build"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "text-fixer",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "decorations": false,
+        "hiddenTitle": true,
+        "transparent": true,
+        "shadow": true
       }
     ],
     "security": {
