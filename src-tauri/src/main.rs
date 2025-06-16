@@ -1,28 +1,30 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-// Hides the console window on Windows release builds.
+use reqwest::Client;
+use text_fixer_lib::*; // import from lib.rs
 
+use std::sync::{Arc, Mutex};
 use tauri::{
   generate_context,
   menu::MenuBuilder,
   tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-  webview::{Url, WebviewWindowBuilder},
-  AppHandle, Manager, WebviewUrl, WebviewWindow, WindowEvent,
+  webview::WebviewWindowBuilder,
+  AppHandle, Manager, WebviewUrl, WindowEvent,
 };
-use std::sync::{Arc, Mutex};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 fn main() {
+  // Load variables from `.env` at project root so OPENAI_API_KEY is available
+  dotenvy::dotenv().ok();
   tauri::Builder::default()
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PastePlugin::default())
     .invoke_handler(tauri::generate_handler![
-      submit_input,
       hide_window,
       mark_previous_window,
       paste_into_previous_app,
+      improve_text, // new
     ])
-    // ── 1. One‑time setup phase ───────────────────────────────────────────────
     .setup(|app| {
       // Global shortcut we want to register (⌘‑Space)
       let shortcut = Shortcut::new(Some(Modifiers::ALT), Code::Space);
@@ -72,7 +74,6 @@ fn main() {
 
       Ok(())
     })
-    // ── 2. React to tray clicks, menu items, and window close events ──────────
     .on_tray_icon_event(|app, event| {
       if matches!(
         event,
@@ -115,9 +116,57 @@ fn show_or_create_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
   }
 }
 
+async fn get_openai_response(prompt: &str) -> Result<String, String> {
+  let api_key = std::env::var("OPENAI_API_KEY").map_err(|_| "OPENAI_API_KEY not set".to_owned())?;
+
+  let user_msg = Message {
+    role: "user",
+    content: &prompt,
+  };
+  let payload = ChatRequest {
+    model: "gpt-4o-mini",
+    messages: &[user_msg],
+  };
+
+  let client = Client::new();
+  let res = client
+    .post("https://api.openai.com/v1/chat/completions")
+    .bearer_auth(api_key)
+    .json(&payload)
+    .send()
+    .await
+    .map_err(|e| e.to_string())?;
+
+  if !res.status().is_success() {
+    return Err(format!("OpenAI API error: {}", res.status()));
+  }
+
+  let chat: ChatResponse = res.json().await.map_err(|e| e.to_string())?;
+
+  let answer = chat
+    .choices
+    .get(0)
+    .map(|c| c.message.content.trim().to_owned())
+    .unwrap_or_default();
+
+  Ok(answer)
+}
+
+/// Build a prompt that rewrites `text` into clear, everyday language and calls the LLM.
+/// Returns the rewritten string or an error string.
+async fn improve(text: &str) -> Result<String, String> {
+  let prompt = format!(
+    "Rewrite the following text so that it reads naturally, with clear and concise sentences. \
+    Use everyday vocabulary, keep the original meaning intact, and avoid wording that feels AI‑generated. \
+    Around the response put < > for me to format it. Example: wat is the meening of life? Response: <What is the meaning of life?\n\n\"{}\"",
+    text.trim()
+  );
+  get_openai_response(&prompt).await
+}
+
 #[tauri::command]
-fn submit_input(text: String) {
-  println!("{text}");
+async fn improve_text(text: String) -> Result<String, String> {
+  improve(&text).await
 }
 
 #[tauri::command]
@@ -133,26 +182,26 @@ struct PastePlugin {
 }
 
 #[tauri::command]
-fn mark_previous_window(state: tauri::State<PastePlugin>) {
+fn mark_previous_window(state: tauri::State<'_, PastePlugin>) {
   *state.last_window.lock().unwrap() = Some(platform_get_foreground_handle());
 }
 
 #[tauri::command]
-fn paste_into_previous_app(
+async fn paste_into_previous_app(
   text: String,
   app: tauri::AppHandle,
-  state: tauri::State<PastePlugin>,
-) -> tauri::Result<()> {
-  // 1. to clipboard
-  println!("{text}");
-  let _ = app.clipboard().write_text(&text);
+  state: tauri::State<'_, PastePlugin>,
+) -> Result<(String, String), String> {
+  println!("{}", text);
+  let response = improve(&text).await?;
+  println!("AI: {}", response);
 
-  // 2. reactivate old window
+  let _ = app.clipboard().write_text(&text);
   if let Some(h) = *state.last_window.lock().unwrap() {
-    platform_activate_window(h)?;
-    platform_send_paste_shortcut(h)?;
+    platform_activate_window(h).map_err(|e| e.to_string())?;
+    platform_send_paste_shortcut(h).map_err(|e| e.to_string())?;
   }
-  Ok(())
+  Ok((text, response))
 }
 
 // ── Platform stubs (replace with real implementations) ────────────────
