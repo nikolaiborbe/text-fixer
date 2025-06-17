@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use reqwest::Client;
-use text_fixer_lib::*; // import from lib.rs
+use text_fixer_lib::*;
+#[cfg(not(target_os = "macos"))]
+use tokio::io::ReadHalf; // import from lib.rs
+mod window_ops;
 
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -10,8 +13,10 @@ use tauri::{
   webview::WebviewWindowBuilder,
   AppHandle, Manager, WebviewUrl, WindowEvent,
 };
-use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use x_win;
+
+use arboard::Clipboard;
 
 fn main() {
   // Load variables from `.env` at project root so OPENAI_API_KEY is available
@@ -21,7 +26,6 @@ fn main() {
     .manage(PastePlugin::default())
     .invoke_handler(tauri::generate_handler![
       hide_window,
-      mark_previous_window,
       paste_into_previous_app,
       improve_text, // new
     ])
@@ -34,6 +38,12 @@ fn main() {
         tauri_plugin_global_shortcut::Builder::new()
           .with_handler(move |app_handle, s, event| {
             if s == &shortcut && matches!(event.state(), ShortcutState::Pressed) {
+              // get current active window
+              let plugin_state = app_handle.state::<PastePlugin>();
+              if let Ok(w) = x_win::get_active_window() {
+                *plugin_state.last_window.lock().unwrap() = Some(w);
+              }
+              // activate the window with shortcut
               if let Some(window) = app_handle.get_webview_window("main") {
                 // Toggle visibility: hide if already visible, else show & focus
                 match window.is_visible() {
@@ -178,47 +188,67 @@ fn hide_window(app: AppHandle) {
 
 #[derive(Default)]
 struct PastePlugin {
-  last_window: Arc<Mutex<Option<PlatformHandle>>>,
-}
-
-#[tauri::command]
-fn mark_previous_window(state: tauri::State<'_, PastePlugin>) {
-  *state.last_window.lock().unwrap() = Some(platform_get_foreground_handle());
+  last_window: Arc<Mutex<Option<x_win::WindowInfo>>>,
 }
 
 #[tauri::command]
 async fn paste_into_previous_app(
   text: String,
-  app: tauri::AppHandle,
+/*   app: tauri::AppHandle, */
   state: tauri::State<'_, PastePlugin>,
 ) -> Result<(String, String), String> {
   println!("{}", text);
   let response = improve(&text).await?;
-  println!("AI: {}", response);
 
-  let _ = app.clipboard().write_text(&text);
-  if let Some(h) = *state.last_window.lock().unwrap() {
-    platform_activate_window(h).map_err(|e| e.to_string())?;
-    platform_send_paste_shortcut(h).map_err(|e| e.to_string())?;
+  let last_window = {
+    let guard = state.last_window.lock().unwrap();
+    guard.clone()
+  };
+
+  if let Some(win) = last_window {
+    window_ops::activate(&win).map_err(|e| e.to_string())?;
+    platform_paste_text(&response)?;
   }
+
+  println!("AI: {}", response);
   Ok((text, response))
 }
 
-// ── Platform stubs (replace with real implementations) ────────────────
 #[allow(dead_code)]
-type PlatformHandle = ();
-
-#[allow(dead_code)]
-fn platform_get_foreground_handle() -> PlatformHandle {
-  ()
-}
-
-#[allow(dead_code)]
-fn platform_activate_window(_: PlatformHandle) -> tauri::Result<()> {
+fn platform_send_paste_shortcut(_: &x_win::WindowInfo) -> Result<(), String> {
   Ok(())
 }
 
-#[allow(dead_code)]
-fn platform_send_paste_shortcut(_: PlatformHandle) -> tauri::Result<()> {
+use enigo::{
+  Direction::{Click, Press, Release},
+  Enigo, Key, Keyboard, Settings,
+};
+/// Copy `text` to the system clipboard and simulate Cmd/Ctrl‑V so it
+/// appears in the now‑focused window.
+fn platform_paste_text(text: &str) -> Result<(), String> {
+  let mut cb = Clipboard::new().map_err(|e| e.to_string())?;
+  cb.set_text(text.to_owned()).map_err(|e| e.to_string())?;
+
+  let mut enigo = Enigo::new(&Settings::default()).map_err(|e| {
+    format!(
+      "enigo init failed: {e:?}\n\
+      On macOS you must enable **System Settings → Privacy & Security \
+      → Accessibility → allow Terminal or your app**"
+    )
+  })?;
+
+  let _ = enigo.key(Key::Meta, Press);
+
+  #[cfg(not(target_os = "macos"))]
+  let _ = enigo.key(Key::Control, Press);
+
+  let _ = enigo.key(Key::Unicode('v'), Click);
+
+  #[cfg(target_os = "macos")]
+  let _ = enigo.key(Key::Meta, Release);
+
+  #[cfg(not(target_os = "macos"))]
+  let _ = enigo.key(Key::Control, Release);
+
   Ok(())
 }
