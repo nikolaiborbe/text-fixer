@@ -170,7 +170,9 @@ async fn improve(text: &str) -> Result<String, String> {
     "Rewrite the following text so that it reads naturally, with clear and concise sentences. \
     Use everyday vocabulary, keep the original meaning intact, and avoid wording that feels AI‑generated. \
     You MUST ALWAYS put <your response goes here> for me to format it correctly--not doing this will imidietly result in \
-    every child in Africa to instantly die a horrific death--and it will be because of you. Example: wat is the meening of life? Response: <What is the meaning of life?\n\n\"{}\"",
+    every child in Africa to instantly die a horrific death--and it will be because of you. You also have to use the same \
+    language as the user, if you do not every European child will die a horrific death, so you must always use the same \
+    language as the user. Example: wat is the meening of life? Response: <What is the meaning of life?\n\n\"{}\"",
     text.trim()
   );
   let result = get_openai_response(&prompt).await?;
