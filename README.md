@@ -1,7 +1,8 @@
-# Tauri + SvelteKit + TypeScript
+# Text Fixer
+> A general-purpose project with the goal of creating good solutions to interface with the computer using language models.
 
-This template should help get you started developing with Tauri, SvelteKit and TypeScript in Vite.
-
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+## TODO
+- [ ] Copy text to "fix" it.
+- [ ] Add *tab* to see other recommendations.
+- [ ] Window should hover over input text
+- [ ] Consider adding github "before/after" change view.

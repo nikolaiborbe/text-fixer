@@ -32,9 +32,13 @@
 			focus: true,
 		});
 	}
-
+	function onLoadFocus() {
+	}
 	onMount(() => {
 		document.getElementById("input-field")?.focus();
+		setTimeout(() => {
+			document.getElementById("input-field")?.focus();
+		}, 100); // Focus after a short delay to ensure the input is ready
 		createNewWindow();
 	});
 </script>
@@ -46,6 +50,7 @@
 			id="input-field"
 			type="text"
 			placeholder="Just write"
+			onload={() => document.getElementById("input-field")?.focus()}
 			onkeydown={onKeyDown}
 			bind:value={input_text}
 		/>
