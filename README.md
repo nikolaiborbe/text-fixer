@@ -6,3 +6,4 @@
 - [ ] Add *tab* to see other recommendations.
 - [ ] Window should hover over input text
 - [ ] Consider adding github "before/after" change view.
+- [ ] Add information about what app is in focus. 
