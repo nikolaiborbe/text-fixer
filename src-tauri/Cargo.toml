@@ -27,7 +27,9 @@ reqwest = { version = "0.12.20", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 dotenvy = "0.15"
 arboard = "3.5.0"
-enigo = "0.5.0"
+rdev = "0.5.3"
+windows = "0.61.3"
+regex = "1.11.1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"

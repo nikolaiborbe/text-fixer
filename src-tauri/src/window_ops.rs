@@ -1,17 +1,41 @@
-use anyhow::{Result};
+use anyhow::{bail, Result};
+use std::ffi::c_void;
 use x_win::WindowInfo;
+
+use windows::Win32::{
+  Foundation::HWND,
+  System::Threading::{AttachThreadInput, GetCurrentThreadId},
+  UI::WindowsAndMessaging::{
+    SetForegroundWindow, GetForegroundWindow, GetWindowThreadProcessId, ShowWindow, SW_RESTORE,
+  },
+};
 
 /// Cross-platform helper function
 pub fn activate(window: &WindowInfo) -> Result<()> {
   #[cfg(target_os = "windows")]
   {
-    use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE};
-    let hwnd = windows::Win32::Foundation::HWND(window.handle as isize);
-    // If the window is minimised, restore it first.
-    unsafe { ShowWindow(hwnd, SW_RESTORE) };
-    let ok = unsafe { SetForegroundWindow(hwnd).as_bool() };
-    if !ok {
-      bail!("SetForegroundWindow failed (maybe running as non-interactive session?)");
+    let hwnd = HWND(window.id as usize as *mut c_void);
+
+    unsafe {
+      println!("Activating window: {}", window.title);
+      let _ = ShowWindow(hwnd, SW_RESTORE);
+
+      // 2) Get the thread IDs
+      let fg_hwnd = GetForegroundWindow();
+      let mut _fg_pid: u32 = 0;
+      let fg_tid = GetWindowThreadProcessId(fg_hwnd, Some(&mut _fg_pid));
+      let my_tid = GetCurrentThreadId();
+
+      // 3) Attach input so we're “allowed” to set focus
+      let _ = AttachThreadInput(my_tid, fg_tid, true);
+      let ok = SetForegroundWindow(hwnd).as_bool();
+      // 4) Detach again
+      let _ = AttachThreadInput(my_tid, fg_tid, false);
+
+      if !ok {
+        println!("Failed to set foreground window: {}", window.title);
+        bail!("Still couldn’t set foreground (focus-stealing prevented)");
+      }
     }
   }
 

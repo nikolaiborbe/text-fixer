@@ -14,8 +14,7 @@
         "label": "main",
         "decorations": false,
         "hiddenTitle": true,
-        "transparent": true,
-        "shadow": true
+        "transparent": true
       }
     ],
     "security": {

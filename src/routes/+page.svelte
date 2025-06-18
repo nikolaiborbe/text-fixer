@@ -13,7 +13,7 @@
 
 		await invoke("paste_into_previous_app", { text: input_text });
 		input_text = "";
-		await invoke("hide_window");
+		// await invoke("hide_window");
 	}
 
 	function createNewWindow() {
