@@ -5,14 +5,17 @@
 
 	let input_text = $state("");
 	let window: WebviewWindow | null = $state(null);
+	let load_output = $state(false);
 
 	let input_width = $derived(Math.max(1, input_text.length));
 
 	async function onKeyDown(event: KeyboardEvent) {
 		if (event.key !== "Enter") return;
+		load_output = true;
 
 		await invoke("paste_into_previous_app", { text: input_text });
 		input_text = "";
+		load_output = false;
 		// await invoke("hide_window");
 	}
 
@@ -22,10 +25,8 @@
 		}
 		window = new WebviewWindow("new-window", {
 			url: "https://tauri.app",
-			width: input_width,
-			resizable: true,
+			resizable: false,
 			maximizable: false,
-			decorations: false,
 			shadow: true,
 			alwaysOnTop: true,
 			focus: true,
@@ -38,13 +39,15 @@
 	});
 </script>
 
-<main class="bg-gray-400 rounded-4xl p-4">
-	<input
-		class="pl-2 appearance-none w-full focus:outline-none"
-		id="input-field"
-		type="text"
-		placeholder="Enter text..."
-		onkeydown={onKeyDown}
-		bind:value={input_text}
-	/>
+<main class="transparent h-screen">
+	<div class="bg-white rounded-l p-2 {load_output ? 'animate-pulse' : ''}">
+		<input
+			class="pl-1 appearance-none w-full focus:outline-none "
+			id="input-field"
+			type="text"
+			placeholder="Just write"
+			onkeydown={onKeyDown}
+			bind:value={input_text}
+		/>
+	</div>
 </main>

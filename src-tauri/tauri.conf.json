@@ -13,8 +13,16 @@
       {
         "label": "main",
         "decorations": false,
-        "hiddenTitle": true,
-        "transparent": true
+        "center": true,
+        "zoomHotkeysEnabled": false,
+        "transparent": true,
+        "width": 300,
+        "minWidth": 200,
+        "maxWidth": 400,
+        "height": 40,
+        "maxHeight": 40,
+        "minHeight": 40,
+        "hiddenTitle": true
       }
     ],
     "security": {
