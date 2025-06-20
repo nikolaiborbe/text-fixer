@@ -27,6 +27,7 @@ fn main() {
     .invoke_handler(tauri::generate_handler![
       hide_window,
       paste_into_previous_app,
+      get_prev_window_name,
       improve_text, // new
     ])
     .setup(|app| {
@@ -202,6 +203,20 @@ fn hide_window(app: AppHandle) {
 #[derive(Default)]
 struct PastePlugin {
   last_window: Arc<Mutex<Option<x_win::WindowInfo>>>,
+}
+
+#[tauri::command]
+async fn get_prev_window_name(state: tauri::State<'_, PastePlugin>) -> Result<String, String> {
+  let last_window = {
+    let guard = state.last_window.lock().unwrap();
+    guard.clone()
+  };
+
+  match last_window {
+    Some(win) if !win.info.name.trim().is_empty() => Ok(win.info.name.clone()),
+    Some(_) => Ok("No title".to_string()),
+    None => Ok("No previous window".to_string()),
+  }
 }
 
 #[tauri::command]
