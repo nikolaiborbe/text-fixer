@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 	import { invoke } from "@tauri-apps/api/core";
+	import type { WindowPos } from "../types";
 
 	let input_text = $state("");
 	let window: WebviewWindow | null = $state(null);
@@ -10,18 +11,12 @@
 
 	let prev_window_name: String = $state("");
 
-	interface WindowPos {
-		x: number;
-		y: number;
-	}
-
 	async function onKeyDown(event: KeyboardEvent) {
-		if (event.key !== "Enter") return;
-
 		getPrevWindowName().then((name) => {
 			prev_window_name =
 				name.length >= 10 ? name.substring(0, 10) + "..." : name;
 		});
+		if (event.key !== "Enter") return;
 		load_output = true;
 
 		await invoke("paste_into_previous_app", { text: input_text });
@@ -32,15 +27,10 @@
 
 	async function getPrevWindowName() {
 		try {
-			return String(await invoke<string>("get_prev_window_name"));
+			return String(await invoke<string>("get_last_window_name"));
 		} catch (error) {
 			return "";
 		}
-	}
-
-	async function getWindowPos(): Promise<WindowPos> {
-		const pos = await invoke<WindowPos>("get_prev_window_pos");
-		return await pos;
 	}
 
 	function createNewWindow() {
@@ -54,14 +44,6 @@
 		setTimeout(() => {
 			document.getElementById("input-field")?.focus();
 		}, 100); // Focus after a short delay to ensure the input is ready
-
-		getWindowPos()
-			.then((pos) => {
-				window_pos = pos;
-			})
-			.catch((e) => {
-				console.error("Error getting window position:", e);
-			});
 
 		createNewWindow();
 		getPrevWindowName();

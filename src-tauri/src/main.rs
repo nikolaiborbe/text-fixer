@@ -2,7 +2,7 @@
 use reqwest::Client;
 use text_fixer_lib::*;
 #[cfg(not(target_os = "macos"))]
-use tokio::io::ReadHalf; // import from lib.rs
+// use tokio::io::ReadHalf; // import from lib.rs
 mod window_ops;
 
 use std::sync::{Arc, Mutex};
@@ -32,10 +32,7 @@ fn main() {
     .invoke_handler(tauri::generate_handler![
       hide_window,
       paste_into_previous_app,
-      get_prev_window_name,
-      get_prev_window_pos,
-      improve_text, // new
-      window_ops::get_prev_window_icon_png,
+      get_last_window_name,
     ])
     .setup(|app| {
       // Global shortcut we want to register (⌘‑Space)
@@ -59,6 +56,12 @@ fn main() {
                     let _ = window.hide();
                   }
                   _ => {
+                    if let Some(w) = get_last_window(&plugin_state) {
+                      // TODO: this is the wrong way to center the application window
+                      let x = ((w.position.x + w.position.width) as f32) / 2.0;
+                      let y = ((w.position.y + w.position.height) as f32) / 2.0;
+                      let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+                    }
                     let _ = window.show();
                     let _ = window.set_focus();
                   }
@@ -175,25 +178,24 @@ use regex::Regex;
 /// Returns the rewritten string or an error string.
 async fn improve(text: &str) -> Result<String, String> {
   // Load prompt from file
-  let prompt_template = std::fs::read_to_string("prompt.txt")
-    .map_err(|e| format!("Failed to read prompt.txt: {}", e))?;
-  
+  let prompt_template = match std::fs::read_to_string("../prompt.txt") {
+    Ok(template) => template,
+    Err(e) => {
+      return Err(format!("Failed to read prompt file: {}", e));
+    }
+  };
+
   let prompt = prompt_template.replace("{text}", text.trim());
   let result = get_openai_response(&prompt).await?;
   let re = Regex::new(r#"<([^>]+)>"#).unwrap();
 
   let extracted = re
-    .captures(&result) // run on your original result
-    .and_then(|caps| caps.get(1)) // grab the first capture group
-    .map(|m| m.as_str().to_string()) // convert Match to String
+    .captures(&result)
+    .and_then(|caps| caps.get(1))
+    .map(|m| m.as_str().to_string())
     .unwrap_or_else(|| "No response".to_string());
 
   Ok(extracted + " ")
-}
-
-#[tauri::command]
-async fn improve_text(text: String) -> Result<String, String> {
-  improve(&text).await
 }
 
 #[tauri::command]
@@ -203,28 +205,13 @@ fn hide_window(app: AppHandle) {
   }
 }
 
-
-
 fn get_last_window(state: &tauri::State<'_, PastePlugin>) -> Option<x_win::WindowInfo> {
   let guard = state.last_window.lock().unwrap();
   guard.clone()
 }
-/// Get the position pixel values of the (top left, bottom right) corners of the last focused window.
-#[tauri::command]
-async fn get_prev_window_pos(state: tauri::State<'_, PastePlugin>) -> Result<(i32, i32), String> {
-  let last_window = get_last_window(&state);
-
-  match last_window {
-    Some(win) => {
-      let window_pos: x_win::WindowPosition = win.position;
-      Ok((window_pos.x, window_pos.y + window_pos.height))
-    }
-    None => Err("No previous window".to_string()),
-  }
-}
 
 #[tauri::command]
-async fn get_prev_window_name(state: tauri::State<'_, PastePlugin>) -> Result<String, String> {
+async fn get_last_window_name(state: tauri::State<'_, PastePlugin>) -> Result<String, String> {
   let last_window = get_last_window(&state);
 
   match last_window {
@@ -240,19 +227,15 @@ async fn paste_into_previous_app(
   app: tauri::AppHandle,
   state: tauri::State<'_, PastePlugin>,
 ) -> Result<(String, String), String> {
-  println!("{}", text);
   let response = improve(&text).await?;
-  println!("Improved text: {}", response);
 
   let last_window = get_last_window(&state);
 
-  if let Some(win) = last_window {
+  if let Some(_win) = last_window {
     // window_ops::activate(&win).map_err(|e| e.to_string())?;
     hide_window(app);
     platform_paste_text(&response)?;
   }
-
-  println!("AI: {}", response);
   Ok((text, response))
 }
 
@@ -279,7 +262,6 @@ fn send(event_type: &EventType) {
 /// Copy `text` to the system clipboard and simulate Cmd/Ctrl‑V so it
 /// appears in the now‑focused window.
 fn platform_paste_text(text: &str) -> Result<(), String> {
-  println!("Pasting text: {}", text);
   let mut cb = Clipboard::new().map_err(|e| e.to_string())?;
   cb.set_text(text.to_owned()).map_err(|e| e.to_string())?;
 
