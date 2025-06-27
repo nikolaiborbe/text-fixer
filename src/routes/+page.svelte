@@ -6,16 +6,22 @@
 	let input_text = $state("");
 	let window: WebviewWindow | null = $state(null);
 	let load_output = $state(false);
+	let window_pos = $state<WindowPos>({ x: 0, y: 0 });
 
-	let input_width = $derived(Math.max(1, input_text.length));
 	let prev_window_name: String = $state("");
 
+	interface WindowPos {
+		x: number;
+		y: number;
+	}
+
 	async function onKeyDown(event: KeyboardEvent) {
+		if (event.key !== "Enter") return;
+
 		getPrevWindowName().then((name) => {
 			prev_window_name =
 				name.length >= 10 ? name.substring(0, 10) + "..." : name;
 		});
-		if (event.key !== "Enter") return;
 		load_output = true;
 
 		await invoke("paste_into_previous_app", { text: input_text });
@@ -32,18 +38,15 @@
 		}
 	}
 
+	async function getWindowPos(): Promise<WindowPos> {
+		const pos = await invoke<WindowPos>("get_prev_window_pos");
+		return await pos;
+	}
+
 	function createNewWindow() {
-		if (window) {
-			window.close();
+		if (window instanceof WebviewWindow) {
 		}
-		window = new WebviewWindow("new-window", {
-			url: "https://tauri.app",
-			resizable: false,
-			maximizable: false,
-			shadow: true,
-			alwaysOnTop: true,
-			focus: true,
-		});
+		console.log("test");
 	}
 
 	onMount(() => {
@@ -51,6 +54,15 @@
 		setTimeout(() => {
 			document.getElementById("input-field")?.focus();
 		}, 100); // Focus after a short delay to ensure the input is ready
+
+		getWindowPos()
+			.then((pos) => {
+				window_pos = pos;
+			})
+			.catch((e) => {
+				console.error("Error getting window position:", e);
+			});
+
 		createNewWindow();
 		getPrevWindowName();
 	});

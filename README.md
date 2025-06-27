@@ -13,4 +13,4 @@ npm run tauri dev
 - [ ] Window should hover over input text
 - [ ] Consider adding github "before/after" change view.
 - [ ] Add information about what app is in focus. 
-    - [ ] Can you get the icon?
+    - [ ] Can you get the icon? <- this is difficult

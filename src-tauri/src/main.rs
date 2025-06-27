@@ -18,6 +18,11 @@ use x_win;
 
 use arboard::Clipboard;
 
+#[derive(Default)]
+pub struct PastePlugin {
+  last_window: Arc<Mutex<Option<x_win::WindowInfo>>>,
+}
+
 fn main() {
   // Load variables from `.env` at project root so OPENAI_API_KEY is available
   dotenvy::dotenv().ok();
@@ -28,7 +33,9 @@ fn main() {
       hide_window,
       paste_into_previous_app,
       get_prev_window_name,
+      get_prev_window_pos,
       improve_text, // new
+      window_ops::get_prev_window_icon_png,
     ])
     .setup(|app| {
       // Global shortcut we want to register (⌘‑Space)
@@ -167,15 +174,11 @@ use regex::Regex;
 /// Build a prompt that rewrites `text` into clear, everyday language and calls the LLM.
 /// Returns the rewritten string or an error string.
 async fn improve(text: &str) -> Result<String, String> {
-  let prompt = format!(
-    "Rewrite the following text so that it reads naturally, with clear and concise sentences. \
-    Use everyday vocabulary, keep the original meaning intact, and avoid wording that feels AI‑generated. \
-    You MUST ALWAYS put <your response goes here> for me to format it correctly--not doing this will imidietly result in \
-    every child in Africa to instantly die a horrific death--and it will be because of you. You also have to use the same \
-    language as the user, if you do not every European child will die a horrific death. There is nothing worse than letting \
-    children die so no other request is more important. Example: wat is the meening of life? Response: <What is the meaning of life?\n\n\"{}\"",
-    text.trim()
-  );
+  // Load prompt from file
+  let prompt_template = std::fs::read_to_string("prompt.txt")
+    .map_err(|e| format!("Failed to read prompt.txt: {}", e))?;
+  
+  let prompt = prompt_template.replace("{text}", text.trim());
   let result = get_openai_response(&prompt).await?;
   let re = Regex::new(r#"<([^>]+)>"#).unwrap();
 
@@ -200,17 +203,29 @@ fn hide_window(app: AppHandle) {
   }
 }
 
-#[derive(Default)]
-struct PastePlugin {
-  last_window: Arc<Mutex<Option<x_win::WindowInfo>>>,
+
+
+fn get_last_window(state: &tauri::State<'_, PastePlugin>) -> Option<x_win::WindowInfo> {
+  let guard = state.last_window.lock().unwrap();
+  guard.clone()
+}
+/// Get the position pixel values of the (top left, bottom right) corners of the last focused window.
+#[tauri::command]
+async fn get_prev_window_pos(state: tauri::State<'_, PastePlugin>) -> Result<(i32, i32), String> {
+  let last_window = get_last_window(&state);
+
+  match last_window {
+    Some(win) => {
+      let window_pos: x_win::WindowPosition = win.position;
+      Ok((window_pos.x, window_pos.y + window_pos.height))
+    }
+    None => Err("No previous window".to_string()),
+  }
 }
 
 #[tauri::command]
 async fn get_prev_window_name(state: tauri::State<'_, PastePlugin>) -> Result<String, String> {
-  let last_window = {
-    let guard = state.last_window.lock().unwrap();
-    guard.clone()
-  };
+  let last_window = get_last_window(&state);
 
   match last_window {
     Some(win) if !win.info.name.trim().is_empty() => Ok(win.info.name.clone()),
@@ -229,10 +244,7 @@ async fn paste_into_previous_app(
   let response = improve(&text).await?;
   println!("Improved text: {}", response);
 
-  let last_window = {
-    let guard = state.last_window.lock().unwrap();
-    guard.clone()
-  };
+  let last_window = get_last_window(&state);
 
   if let Some(win) = last_window {
     // window_ops::activate(&win).map_err(|e| e.to_string())?;
