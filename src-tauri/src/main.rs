@@ -58,8 +58,8 @@ fn main() {
                   _ => {
                     if let Some(w) = get_last_window(&plugin_state) {
                       // TODO: this is the wrong way to center the application window
-                      let x = ((w.position.x + w.position.width) as f32) / 2.0;
-                      let y = ((w.position.y + w.position.height) as f32) / 2.0;
+                      let x = (((w.position.x + w.position.width) as f32) / 2.) - 150.;
+                      let y = (((w.position.y + w.position.height) as f32) / 2.) - 22.;
                       let _ = window.set_position(tauri::LogicalPosition::new(x, y));
                     }
                     let _ = window.show();

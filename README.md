@@ -12,7 +12,12 @@ npm run tauri dev
 - [ ] Add *tab* to see other recommendations.
 - [ ] Window should hover over input text
   - [ ] Temp. fix: center text-fixer on current application.
-    - [ ] fix: displaying the window center is currently offset.
+    - [x] fix: displaying the window center is currently offset.
 - [ ] Consider adding github "before/after" change view.
 - [ ] Add information about what app is in focus. 
-    - [ ] Can you get the icon? <- this is difficult
+  - [ ] Can you get the icon? <- this is difficult
+
+- [ ] Input text styling
+  - [x] Add icon
+  - [x] Add animation when text is sent
+  - [ ] Add popup animation

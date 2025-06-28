@@ -3,68 +3,102 @@
 	import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 	import { invoke } from "@tauri-apps/api/core";
 	import type { WindowPos } from "../types";
+	import AiLogo from "../components/icons/AiLogo.svelte";
 
 	let input_text = $state("");
 	let window: WebviewWindow | null = $state(null);
 	let load_output = $state(false);
-	let window_pos = $state<WindowPos>({ x: 0, y: 0 });
 
 	let prev_window_name: String = $state("");
 
 	async function onKeyDown(event: KeyboardEvent) {
-		getPrevWindowName().then((name) => {
-			prev_window_name =
-				name.length >= 10 ? name.substring(0, 10) + "..." : name;
-		});
 		if (event.key !== "Enter") return;
 		load_output = true;
-
 		await invoke("paste_into_previous_app", { text: input_text });
 		input_text = "";
 		load_output = false;
-		// await invoke("hide_window");
 	}
 
-	async function getPrevWindowName() {
+	async function setPrevWindowName() {
+		const length = 13;
 		try {
-			return String(await invoke<string>("get_last_window_name"));
+			const prev_name = String(await invoke<string>("get_last_window_name"));
+			prev_window_name =
+				prev_name.length >= length
+					? String(await invoke<string>("get_last_window_name")).slice(
+							0,
+							length,
+						) + "..."
+					: prev_name;
 		} catch (error) {
-			return "";
+			console.error("Error getting previous window name:", error);
+			prev_window_name = "Unknown";
 		}
-	}
-
-	function createNewWindow() {
-		if (window instanceof WebviewWindow) {
-		}
-		console.log("test");
 	}
 
 	onMount(() => {
 		document.getElementById("input-field")?.focus();
-		setTimeout(() => {
-			document.getElementById("input-field")?.focus();
-		}, 100); // Focus after a short delay to ensure the input is ready
-
-		createNewWindow();
-		getPrevWindowName();
 	});
 </script>
 
-<main class="transparent h-screen">
+<main class="flex items-center justify-center min-h-screen">
 	<div
-		class="flex justify-around bg-white rounded-l p-2 {load_output
-			? 'animate-pulse'
-			: ''}"
+		class="
+		p-[1px] rounded-lg w-full
+		{load_output ? 'fancy-border' : 'p-0'} 
+		"
 	>
-		<input
-			class="pl-1 appearance-none w-full focus:outline-none flex-1"
-			id="input-field"
-			type="text"
-			placeholder="Just write"
-			onload={() => document.getElementById("input-field")?.focus()}
-			onkeydown={onKeyDown}
-			bind:value={input_text}
-		/>
-		<p class="pl-2 pr-1 text-gray-500">{prev_window_name}</p>
+		<div class="flex items-center bg-black rounded-lg px-3 py-3">
+			<AiLogo />
+
+			<input
+				class="flex-1 bg-transparent focus:outline-none text-white px-2"
+				placeholder="Just write"
+				type="text"
+				id="input-field"
+				bind:value={input_text}
+				onfocus={() => {
+					setPrevWindowName();
+					document.getElementById("input-field")?.focus();
+				}}
+				onkeydown={onKeyDown}
+			/>
+
+			<p class="text-white/60">{prev_window_name}</p>
+		</div>
 	</div>
 </main>
+
+<style>
+	@property --border-angle {
+		syntax: "<angle>";
+		initial-value: 0deg;
+		inherits: false;
+	}
+
+	@keyframes spinBorder {
+		to {
+			--border-angle: 360deg;
+		}
+	}
+
+	.fancy-border {
+		border-radius: 0.5rem;
+		border: 1px solid transparent;
+
+		background:
+			conic-gradient(
+					from var(--border-angle),
+					#000000 40%,
+					#74558d 65%,
+					#e95ad6 70%,
+					#74558d 85%,
+					#000000 100%
+				)
+				border-box,
+			transparent padding-box;
+
+		--border-angle: 0deg;
+		animation: spinBorder 3s cubic-bezier(0.39, 0.575, 0.565, 1) infinite;
+	}
+</style>

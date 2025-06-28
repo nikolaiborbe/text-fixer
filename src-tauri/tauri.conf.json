@@ -16,12 +16,9 @@
         "center": true,
         "zoomHotkeysEnabled": false,
         "transparent": true,
-        "width": 400,
-        "minWidth": 300,
-        "maxWidth": 500,
-        "height": 40,
-        "maxHeight": 40,
-        "minHeight": 40,
+        "width": 500,
+        "height": 53,
+        "resizable": false,
         "hiddenTitle": true
       }
     ],
