@@ -13,6 +13,7 @@ npm run tauri dev
 - [ ] Window should hover over input text
   - [ ] Temp. fix: center text-fixer on current application.
     - [x] fix: displaying the window center is currently offset.
+  - [ ] A better implementation would be to match the text-fixer window size to the input window size. This way you could also add a border around the current window making it very clear which window is being used.
 - [ ] Consider adding github "before/after" change view.
 - [ ] Add information about what app is in focus. 
   - [ ] Can you get the icon? <- this is difficult
