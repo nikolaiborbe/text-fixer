@@ -4,6 +4,7 @@
 	import { invoke } from "@tauri-apps/api/core";
 	import type { WindowPos } from "../types";
 	import AiLogo from "../components/icons/AiLogo.svelte";
+	import "../styles.css";
 
 	let input_text = $state("");
 	let window: WebviewWindow | null = $state(null);
