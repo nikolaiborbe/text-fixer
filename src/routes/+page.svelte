@@ -37,34 +37,39 @@
 	}
 
 	onMount(() => {
-		document.getElementById("input-field")?.focus();
+		setTimeout(() => {
+			document.getElementById("input-field")?.focus();
+		}, 100);
 	});
 </script>
 
-<main class="flex items-center justify-center min-h-screen">
-	<div
-		class="
-		p-[1px] rounded-lg w-full
-		{load_output ? 'fancy-border' : 'p-0'} 
-		"
-	>
-		<div class="flex items-center bg-black rounded-lg px-3 py-3">
-			<AiLogo />
+<main class="border-4 rounded-md border-rose-600 h-svh w-svw overflow-hidden">
+	<div class="flex h-screen w-screen items-center justify-center">
+		<div
+			class="
+			p-[1px] rounded-lg
+			{load_output ? 'fancy-border' : 'p-0'} 
+			"
+		>
+			<div class="flex items-center bg-black rounded-lg px-3 py-3 w-96 h-12">
+				<AiLogo />
 
-			<input
-				class="flex-1 bg-transparent focus:outline-none text-white px-2"
-				placeholder="Just write"
-				type="text"
-				id="input-field"
-				bind:value={input_text}
-				onfocus={() => {
-					setPrevWindowName();
-					document.getElementById("input-field")?.focus();
-				}}
-				onkeydown={onKeyDown}
-			/>
+				<input
+					class="flex-1 bg-transparent focus:outline-none text-white px-2"
+					placeholder="Just write"
+					autocomplete="off"
+					type="text"
+					id="input-field"
+					bind:value={input_text}
+					onfocus={() => {
+						setPrevWindowName();
+						document.getElementById("input-field")?.focus();
+					}}
+					onkeydown={onKeyDown}
+				/>
 
-			<p class="text-white/60">{prev_window_name}</p>
+				<p class="text-white/60">{prev_window_name}</p>
+			</div>
 		</div>
 	</div>
 </main>
