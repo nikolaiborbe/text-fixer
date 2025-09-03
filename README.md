@@ -5,7 +5,9 @@
 # Text Fixer
 > A general-purpose project with the goal of creating a good interface for writing with LLMs.
 
+<center>
 ![](assets/vid.gif)
+</center>
 
 ## Installation
 Make sure you have ```npm``` and ```rust``` installed. Clone the repository and run:
