@@ -6,7 +6,7 @@
 > A general-purpose project with the goal of creating a good interface for writing with LLMs.
 
 <div align="center">
-![](assets/vid.gif)
+<img src="assets/vid.gif" />
 </div>
 
 ## Installation
