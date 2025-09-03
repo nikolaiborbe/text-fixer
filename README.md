@@ -1,5 +1,11 @@
+<div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 20px 0; color: #856404;">
+⚠️ <b>DISCONTINUED</b>: This project is no longer being worked on.
+</div>
+
 # Text Fixer
 > A general-purpose project with the goal of creating a good interface for writing with LLMs.
+
+![](assets/vid.gif)
 
 ## Installation
 Make sure you have ```npm``` and ```rust``` installed. Clone the repository and run:
